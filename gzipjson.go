@@ -5,17 +5,14 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 )
 
 func Marshal(v interface{}) ([]byte, error) {
-	pr, pw := io.Pipe()
-	defer pr.Close()
-	go func() {
-		defer pw.Close()
-		_ = NewEncoder(pw).Encode(v)
-	}()
-	return ioutil.ReadAll(pr)
+	buf := bytes.NewBuffer(nil)
+	if err := NewEncoder(buf).Encode(v); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 type Encoder struct {
@@ -27,19 +24,11 @@ func NewEncoder(w io.Writer) *Encoder {
 }
 
 func (e *Encoder) Encode(v interface{}) error {
-	pr, pw := io.Pipe()
-	defer pr.Close()
-	go func() {
-		defer pw.Close()
-		_ = json.NewEncoder(pw).Encode(v)
-	}()
-
-	gw := gzip.NewWriter(e.w)
-	defer gw.Close()
-	if _, err := io.Copy(gw, pr); err != nil {
+	zw := gzip.NewWriter(e.w)
+	if err := json.NewEncoder(zw).Encode(&v); err != nil {
 		return err
 	}
-	return nil
+	return zw.Close()
 }
 
 func Unmarshal(data []byte, v interface{}) error {
