@@ -8,7 +8,7 @@ import (
 )
 
 func Marshal(v interface{}) ([]byte, error) {
-	buf := bytes.NewBuffer(nil)
+	var buf bytes.Buffer
 	if err := NewEncoder(buf).Encode(v); err != nil {
 		return nil, err
 	}
